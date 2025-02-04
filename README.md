@@ -26,11 +26,16 @@ OPENAI_API_KEY=your-openai-key
 NETWORK_ID=base-sepolia
 ```
 
+Create virtual environment
+```bash
+python -m venv .venv
+```
+
 Activate virtual environment
 ```bash
-source venv/bin/activate
+source .venv/bin/activate
 ```
-(FOR Windows use ```venv\Scripts\activate```)
+(FOR Windows use ```.venv\Scripts\activate```)
 
 Install dependencies
 ```bash
