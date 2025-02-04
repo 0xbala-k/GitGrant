@@ -169,3 +169,6 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# wallet data
+wallet_data.txt
