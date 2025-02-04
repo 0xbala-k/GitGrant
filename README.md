@@ -28,14 +28,15 @@ NETWORK_ID=base-sepolia
 
 Create virtual environment
 ```bash
-python -m venv .venv
+cd agents
+python -m venv venv
 ```
 
 Activate virtual environment
 ```bash
-source .venv/bin/activate
+source venv/bin/activate
 ```
-(FOR Windows use ```.venv\Scripts\activate```)
+(FOR Windows use ```venv\Scripts\activate```)
 
 Install dependencies
 ```bash
