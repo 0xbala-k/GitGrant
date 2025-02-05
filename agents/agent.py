@@ -19,7 +19,7 @@ from cdp import *
 # Configure a file to persist the agent's CDP MPC Wallet Data.
 wallet_data_file = "wallet_data.txt"
 
-load_dotenv('./.env')
+load_dotenv('../.env')
 def initialize_agent():
     """Initialize the agent with CDP Agentkit."""
     # Initialize LLM.
@@ -38,7 +38,6 @@ def initialize_agent():
         values = {"cdp_wallet_data": wallet_data}
 
     agentkit = CdpAgentkitWrapper(**values)
-    # agentkit = CdpAgentkitWrapper()
     
 
     # persist the agent's CDP MPC Wallet Data.
