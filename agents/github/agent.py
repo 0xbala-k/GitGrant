@@ -6,19 +6,15 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage
 
-from issues import get_issue,get_all_issue_comments,get_issue_lable_names
+from github.issues import get_issue,get_all_issue_comments,get_issue_lable_names
 
 # Load environment variables (GitHub and OpenAI tokens)
 load_dotenv()
 
-def initialize_agent():
+def initialize_github_agent(memory, config):
     """Initialize the agent with github tools."""
     # Initialize LLM.
     llm = ChatOpenAI(model="gpt-4o-mini")
-
-    # Store buffered conversation history in memory.
-    memory = MemorySaver()
-    config = {"configurable": {"thread_id": "1"}}
 
     # Create ReAct Agent using the LLM and CDP Agentkit tools.
     return create_react_agent(
@@ -54,6 +50,10 @@ def run_chat_mode(agent_executor, config):
             sys.exit(0)
 
 if __name__ == "__main__":
+    # Store buffered conversation history in memory.
+    memory = MemorySaver()
+    config = {"configurable": {"thread_id": "1"}}
+    
     print("Starting Agent...")
-    agent_executor, config = initialize_agent()
+    agent_executor, config = initialize_github_agent(memory, config)
     run_chat_mode(agent_executor, config)
