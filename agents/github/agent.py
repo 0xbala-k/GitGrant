@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage
 
 from github.issues import get_issue,get_all_issue_comments,get_issue_lable_names
 
-# Load environment variables (GitHub and OpenAI tokens)
+# Load environment variables (OpenAI token)
 load_dotenv()
 
 def initialize_github_agent(memory, config):
@@ -21,7 +21,7 @@ def initialize_github_agent(memory, config):
         llm,
         tools=[get_issue,get_all_issue_comments,get_issue_lable_names],
         checkpointer=memory,
-        state_modifier="\nAsk the user for issue info and use the tools to get issue title, body, labels, and comments."\
+        state_modifier="Ask the user for issue info and use the tools to get issue title, body, labels, and comments."\
                 "Based on the details you get from tools, provide a list of clear, actionable steps to resolve this issue. " \
               "If you require any additional details regarding the repository or the issue for a more accurate diagnosis, " \
               "please specify what extra information is needed."

@@ -54,7 +54,7 @@ def get_all_open_issues(owner: str, repo: str, per_page: int = 100) -> list:
         
         for issue in issues_page:
             if "pull_request" not in issue:
-                all_issues.append({"number":issue.get('number'),"title":issue.get('title'),"body":issue.get('body')})
+                all_issues.append(issue.get('number'))
         print(f"Fetched page {page} with {len(issues_page)} issues.")
         page += 1
 

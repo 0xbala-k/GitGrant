@@ -15,12 +15,13 @@ from cdp_langchain.utils import CdpAgentkitWrapper
 from cdp_langchain.tools import CdpTool
 from pydantic import BaseModel, Field
 from cdp import *
+from github.issues import get_all_open_issues
 
 # Configure a file to persist the agent's CDP MPC Wallet Data.
 wallet_data_file = "wallet_data.txt"
 
-load_dotenv('../.env')
-def initialize_agent():
+load_dotenv()
+def initialize_meta_agent(memory, config):
     """Initialize the agent with CDP Agentkit."""
     # Initialize LLM.
     llm = ChatOpenAI(model="gpt-4o-mini")
@@ -48,18 +49,21 @@ def initialize_agent():
     # Initialize CDP Agentkit Toolkit and get tools.
     cdp_toolkit = CdpToolkit.from_cdp_agentkit_wrapper(agentkit)
     tools = cdp_toolkit.get_tools()
-
-    # Store buffered conversation history in memory.
-    memory = MemorySaver()
-    config = {"configurable": {"thread_id": "GitGrant"}}
+    
+    # Add github tool to get all open issues to the tools list
+    tools.append(get_all_open_issues)
 
     # Create ReAct Agent using the LLM and CDP Agentkit tools.
     return create_react_agent(
         llm,
         tools=tools,
         checkpointer=memory,
-        state_modifier=
-        "You are a helpful agent that can interact onchain using the Coinbase Developer Platform Agentkit. You are empowered to interact onchain using your tools. If you ever need funds, you can request them from the faucet if you are on network ID `base-sepolia`. If not, you can provide your wallet details and request funds from the user. If someone asks you to do something you can't do with your currently available tools, you must say so, and encourage them to implement it themselves using the CDP SDK + Agentkit, recommend they go to docs.cdp.coinbase.com for more informaton. Be concise and helpful with your responses. Refrain from restating your tools' descriptions unless it is explicitly requested.",
+        state_modifier="""
+            You have two primary functions as an agent, for each you have to return ACTION and RESULT:\
+                1. Given the owner and name of a GitHub repository, you can fetch all open issues for that repository. Once fetched, return all the issue id in a list as RESULT and ACTION = FETCH.\
+                2. Given a wallet address, and amount to send, send funds to the wallet address and return ACTION = SEND and RESULT = (amount sent, address, transaction id).\
+            ACTION and RESULT should be keys in a returned dictionary. 
+        """
     ), config
 
 
@@ -135,7 +139,11 @@ def choose_mode():
 
 def main():
     """Start the chatbot agent."""
-    agent_executor, config = initialize_agent()
+    # Store buffered conversation history in memory.
+    memory = MemorySaver()
+    config = {"configurable": {"thread_id": "GitGrant"}}
+    
+    agent_executor, config = initialize_meta_agent(memory, config)
 
     mode = choose_mode()
     if mode == "chat":
