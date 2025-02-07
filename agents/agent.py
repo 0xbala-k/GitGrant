@@ -20,7 +20,7 @@ from github.issues import get_all_open_issues
 # Configure a file to persist the agent's CDP MPC Wallet Data.
 wallet_data_file = "wallet_data.txt"
 
-load_dotenv()
+load_dotenv("../.env")
 def initialize_meta_agent(memory, config):
     """Initialize the agent with CDP Agentkit."""
     # Initialize LLM.
