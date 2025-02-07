@@ -12,8 +12,6 @@ from langgraph.prebuilt import create_react_agent
 # Import CDP Agentkit Langchain Extension.
 from cdp_langchain.agent_toolkits import CdpToolkit
 from cdp_langchain.utils import CdpAgentkitWrapper
-from cdp_langchain.tools import CdpTool
-from pydantic import BaseModel, Field
 from cdp import *
 from github.issues import get_all_open_issues
 
