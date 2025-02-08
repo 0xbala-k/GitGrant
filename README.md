@@ -24,6 +24,7 @@ CDP_API_KEY_NAME=your-cdp-key-name
 CDP_API_KEY_PRIVATE_KEY=your-cdp-private-key
 OPENAI_API_KEY=your-openai-key
 NETWORK_ID=base-sepolia
+GITHUB_TOKEN=your-github-token
 ```
 
 Create virtual environment
@@ -41,4 +42,9 @@ source venv/bin/activate
 Install dependencies
 ```bash
 pip install -r requirements.txt
+```
+
+Run chatbot API server
+```bash
+python app.py
 ```
