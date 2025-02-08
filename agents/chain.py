@@ -108,33 +108,42 @@ def next_step(state: State):
     elif state["action"] == "":
         return END
 
-workflow = StateGraph(State)
 
-workflow.add_node(meta_agent_routing)
-workflow.add_node(evaluate_issue)
-workflow.add_node(assign_rating)
+def init_chain():
+    workflow = StateGraph(State)
 
-workflow.add_edge(START, "meta_agent_routing")
-workflow.add_conditional_edges("meta_agent_routing", next_step, ["evaluate_issue", END])
-workflow.add_edge("evaluate_issue", "assign_rating")
-workflow.add_conditional_edges("assign_rating", next_step, ["evaluate_issue", END])
+    workflow.add_node(meta_agent_routing)
+    workflow.add_node(evaluate_issue)
+    workflow.add_node(assign_rating)
 
-chain = workflow.compile()
-state={"owner": "grafana", "repo": "grafana-app-sdk", "remaining_budget": 0.0001, "action": "fetch"}
+    workflow.add_edge(START, "meta_agent_routing")
+    workflow.add_conditional_edges("meta_agent_routing", next_step, ["evaluate_issue", END])
+    workflow.add_edge("evaluate_issue", "assign_rating")
+    workflow.add_conditional_edges("assign_rating", next_step, ["evaluate_issue", END])
 
-state = chain.invoke(state,{"recursion_limit": 100})
-print("Final state:", state)
-# state={
-#     'owner': 'grafana', 
-#     'repo': 'grafana-app-sdk', 
-#     'remaining_budget': 0.1, 
-#     'action': '', 
-#     'current_issue': 0, 
-#     'action_items': '', 
-#     'issues': {617: 85, 559: 85, 523: 85, 522: 85, 489: 82, 460: 75, 457: 85, 455: 85, 453: 85, 375: 85, 363: 65, 353: 75, 312: 65, 292: 75, 236: 85, 201: 85, 194: 85, 193: 75, 191: 85, 187: 75, 184: 85, 163: 85, 151: 85, 88: 70, 72: 75, 48: 75, 47: 75, 39: 85, 26: 75, 19: 75}, 
-#     'rating_sum': 2392
-#     }
-state["action"] = "send"
-state["issues"][407]=85
-state["current_issue"] = 409
-state = chain.invoke(state)
+    chain = workflow.compile()
+    return chain
+
+if __name__ == '__main__':
+    
+    chain = init_chain()
+    
+    state={"owner": "grafana", "repo": "grafana-app-sdk", "remaining_budget": 0.0001, "action": "fetch"}
+
+    # state = chain.invoke(state,{"recursion_limit": 100})
+    # print("Final state:", state)
+    state={
+        'owner': 'grafana', 
+        'repo': 'grafana-app-sdk', 
+        'remaining_budget': 0.0001, 
+        'action': '', 
+        'current_issue': 0, 
+        'action_items': '', 
+        'issues': {617: 85, 559: 85, 523: 85, 522: 85, 489: 82, 460: 75, 457: 85, 455: 85, 453: 85, 375: 85, 363: 65, 353: 75, 312: 65, 292: 75, 236: 85, 201: 85, 194: 85, 193: 75, 191: 85, 187: 75, 184: 85, 163: 85, 151: 85, 88: 70, 72: 75, 48: 75, 47: 75, 39: 85, 26: 75, 19: 75}, 
+        'rating_sum': 2392
+        }
+    state["action"] = "send"
+    state["issues"][407]=85
+    state["current_issue"] = 409
+    state = chain.invoke(state)
+    print("Final state:", state)
