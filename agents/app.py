@@ -16,7 +16,8 @@ def invoke_chatbot():
 
     try:
         # Invoke the chain with the provided state.
-        final_state = chain.invoke(state)
+        # TODO: change recursion limit based on action and issue count
+        final_state = chain.invoke(state, {"recursion_limit": 100})
     except Exception as e:
         return jsonify({'error': f'Error while invoking chatbot: {str(e)}'}), 500
 
