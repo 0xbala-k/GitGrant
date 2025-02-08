@@ -71,7 +71,7 @@ def initialize_rating_agent(memory, config):
             "analyze the overall priority and difficulty of the issue. Based on your analysis, assign a final rating "
             "from 1 to 100 where a higher rating indicates a higher priority and more challenging issue. "
             "This rating will be used as a reward incentive for resolving the issue. "
-            "Provide only the final rating."
+            "Output only an integer which is the rating for the issue."
         )
     ), config
 
