@@ -91,10 +91,10 @@ def meta_agent_routing(state: State):
         # get contribution["author"] address
         address="0xD0A6F0F54803E50F27A6CC1741031094267AEE78"
         response =  meta_agent.invoke(
-            {"messages": [f"Address: {address}, Amount: {(state['remaining_budget']/state['rating_sum'])*state['issues'][int(contribution['linked issue'])]}"]},
+            {"messages": [f"Address: {address}, Amount: {(state['remaining_budget']/state['rating_sum'])*state['issues'][contribution['linked issue']]}"]},
         )
-        print(response["messages"][-1].content)
-        return {"issues":[], "current_issue":0, "action":""}
+        json_response=json.loads(response["messages"][-1].content)
+        return {"issues":[], "current_issue":0, "action":"", "message":json_response["RESULT"]}
     
 def next_step(state: State):
     if state["action"] == "fetch":
