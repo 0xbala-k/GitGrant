@@ -2,13 +2,10 @@
 
 import * as React from "react"
 import {
-  AudioWaveform,
-  Command,
   GalleryVerticalEnd,
   Settings2,
   SquareTerminal,
 } from "lucide-react"
-
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import { TeamSwitcher } from "@/components/team-switcher"
@@ -19,80 +16,71 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { useAuth } from "@/contexts/AuthContext"
 
-const data = {
-  user: {
-    name: "Davanapally Itesh",
-    email: "itesh@gitgrant.com",
-    avatar: "/avatars/shadcn.jpg",
-    id: "user_01"
+const teams = [
+  {
+    name: "GitGrant",
+    logo: GalleryVerticalEnd,
+    plan: "open-source",
   },
-  teams: [
-    {
-      name: "GitGrant",
-      logo: GalleryVerticalEnd,
-      plan: "open-source",
-    },
-    {
-      name: "Langchain",
-      logo: AudioWaveform,
-      plan: "open-source",
-    },
-    {
-      name: "AgentKit",
-      logo: Command,
-      plan: "closed-source",
-    },
-  ],
-  navMain: [
-    {
-      title: "Maintainer",
-      url: "/dashboard/maintainer",
-      icon: SquareTerminal,
-      items: [
-        {
-          title: "Overview",
-          url: "dashboard/maintainer",
-        },
-        {
-          title: "Repositories",
-          url: "dashboard/maintainer/repositories",
-        },
-        {
-          title: "Grants",
-          url: "dashboard/maintainer/grants",
-        },
-      ],
-    },
-    {
-      title: "Contributor",
-      url: "/dashboard/contributor",
-      icon: Settings2,
-      items: [
-        {
-          title: "Overview",
-          url: "dashboard/contributor",
-        },
-        {
-          title: "Earnings",
-          url: "dashboard/contributor/earnings",
-        }
-      ],
-    },
-  ],
-}
+  
+]
+
+const navMain = [
+  {
+    title: "Maintainer",
+    url: "/dashboard/maintainer",
+    icon: SquareTerminal,
+    items: [
+      {
+        title: "Overview",
+        url: "dashboard/maintainer",
+      },
+      {
+        title: "Repositories",
+        url: "dashboard/maintainer/repositories",
+      },
+      {
+        title: "Grants",
+        url: "dashboard/maintainer/grants",
+      },
+    ],
+  },
+  {
+    title: "Contributor",
+    url: "/dashboard/contributor",
+    icon: Settings2,
+    items: [
+      {
+        title: "Overview",
+        url: "dashboard/contributor",
+      },
+      {
+        title: "Earnings",
+        url: "dashboard/contributor/earnings",
+      }
+    ],
+  },
+]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <TeamSwitcher teams={teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        {user && <NavUser user={user} />}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
