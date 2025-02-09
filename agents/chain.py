@@ -10,7 +10,6 @@ from agent import initialize_meta_agent
 from github.contribution import get_contribution
 from interactions.deploy import register_user, register_repo, update_issues, resolve_issue
 from interactions.read import get_repo_state, check_repo_registration
-from utils import split_dicts
 class State(TypedDict):
     # User input
     username: str
@@ -58,19 +57,22 @@ def assign_rating(state: State):
         if rating_val == 0:
             current_issue = issue
             return {"issues": issues, "current_issue": current_issue, "action": "evaluate"}
-    return {"issues": issues,"action_items":"","current_issue":0, "action":"", "rating_sum":sum}
+    issueNumbers=[str(num) for num in list(issues.keys())]
+    ratings=[str(num) for num in list(issues.values())]
+    update_issues(state["owner"]+"/"+state["repo"],issueNumbers,ratings,str(int(sum)))
+    return {"issues": issues,"action_items":"","current_issue":0, "action":"", "rating_sum":sum,"message":f"Total {len(issueNumbers)} issues are fetched and rated."}
 
 meta_agent,_ = initialize_meta_agent(memory, config)
 def meta_agent_routing(state: State):
     if state["action"] == "register user":
         register_user(state["username"],state["address"])
-        return {"action":""}
+        return {"action":"","message":f"User {state["username"]} registered with address {state["address"]}."}
     elif state["action"] == "register repo":
         if check_repo_registration(state["owner"]+"/"+state["repo"]):
-            return {"action":"","message":"Repo already registered"}
+            return {"action":"","message":f"Repo {state["owner"]+"/"+state["repo"]} already registered."}
         
         register_repo(state["owner"],state["repo"])
-        return {"action":""}
+        return {"action":"", "message":f"Repo {state["owner"]+"/"+state["repo"]} successfully registered."}
     elif state["action"] == "fetch":
         response =  meta_agent.invoke(
             {"messages": [f"Owner:{state['owner']}, Repo:{state['repo']}"]},
@@ -90,24 +92,29 @@ def meta_agent_routing(state: State):
             print("Invalid action")
         
         # update repo state in smart contract
-        issueNumbers,ratings=split_dicts(issues)
-        update_issues(state["owner"]+"/"+state["repo"],issueNumbers,ratings,state["rating_sum"])
-        return {"issues":issues, "action":""}
+        issueNumbers=[str(num) for num in list(issues.keys())]
+        ratings=[str(num) for num in list(issues.values())]
+        update_issues(state["owner"]+"/"+state["repo"],issueNumbers,ratings,str(int(state["rating_sum"])))
+        return {"issues":issues, "action":"","message":f"Total {len(issueNumbers)} issues are fetched and rated."}
         
     elif state["action"] == "resolve":
         contribution = get_contribution(owner=state["owner"], repo=state["repo"], pr=state["current_issue"])
         if contribution["linked issue"]==0:
-            return {"message": f"PR {state['current_issue']} is not linked to any issue.", "action":"", "current_issue":0}
+            return {"message": f"PR {state['current_issue']} is not linked to any issue.", "action":""}
         elif contribution["pr_state"]=="open":
-            return {"message": f"PR {state['current_issue']} is still open.", "action":"", "current_issue":0}
+            return {"message": f"PR {state['current_issue']} is still open.", "action":""}
         elif contribution["issue_state"]=="open":
-            return {"message": f"Linked issue {contribution['linked issue']} is still open.", "action":"", "current_issue":0}
+            return {"message": f"Linked issue {contribution['linked issue']} is still open.", "action":""}
         
         # mark issue resolved and pay contributor through smart contract
         amount=calculate_reward_amount(state["owner"]+"/"+state["repo"],contribution["linked issue"])
+        
+        if amount is None:
+            return {"message": f"Linked issue {contribution['linked issue']} is has no reward assigned.", "action":""}
+    
         resolve_issue(state["owner"]+"/"+state["repo"],str(contribution["linked issue"]),contribution["author"],str(amount))
-     
-        return {"issues":[], "current_issue":0, "action":"", "message":f"Issue #{contribution["linked issue"]} resolved and {amount} paid to {contribution["author"]}."}
+        
+        return {"action":"", "message":f"Issue #{contribution["linked issue"]} resolved and {amount} paid to {contribution["author"]}."}
     
 def next_step(state: State):
     if state["action"] == "fetch":
@@ -138,11 +145,14 @@ def calculate_reward_amount(repoID: str, issueNumber: int):
     issues=repo_state["issues"]
     remaining_budget=repo_state["remaining_budget"]
     total_rating=repo_state["total_rating"]
-    rating=0
+    rating=None
     for issue in issues:
-        if issue[0] == issueNumber:
+        if issue[0] == int(issueNumber):
             rating=issue[1]
             break
+
+    if rating is None:
+        return None
     reward=int((remaining_budget/total_rating)*rating)
     return reward
 
