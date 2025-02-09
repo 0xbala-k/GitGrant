@@ -33,8 +33,15 @@ contract GitGrant {
     }
 
     // Set the deployer as the owner.
-    constructor() {
-        owner = msg.sender;
+    constructor(address agent) {
+        owner = agent;
+    }
+
+    // Custom getter to retrieve the complete issues array.
+    function getRepoIssues(
+        string memory repoName
+    ) public view returns (Issue[] memory) {
+        return repoStates[repoName].issueRatings;
     }
 
     /// @notice Register a GitHub user by mapping their GitHub username to their wallet address.
@@ -85,13 +92,15 @@ contract GitGrant {
         repoStates[repoName].remainingBudget += msg.value;
     }
 
-    /// @notice Add an issue to the repository’s list of issues and update its rating sum.
+    /// @notice Update repository’s list of issues and update its rating sum.
     /// @param repoName The repository to update.
-    /// @param newRatings updated issues and ratings.
+    /// @param issueNumbers updated issues.
+    /// @param difficultyRatings updated  ratings.
     /// @param totalRating total difficulty ratings for all the issues.
     function updateIssues(
         string memory repoName,
-        Issue[] memory newRatings,
+        uint256[] memory issueNumbers,
+        uint256[] memory difficultyRatings,
         uint totalRating
     ) external onlyOwner {
         require(
@@ -99,15 +108,21 @@ contract GitGrant {
             "Repo not registered"
         );
 
-        // Add the new issue.
+        require(
+            issueNumbers.length == difficultyRatings.length,
+            "Array lengths mismatch"
+        );
+
         RepoState storage repo = repoStates[repoName];
 
         // Clear the existing issues array.
         delete repo.issueRatings;
 
-        // Copy each Issue from the memory array to the storage array.
-        for (uint i = 0; i < newRatings.length; i++) {
-            repo.issueRatings.push(newRatings[i]);
+        // Rebuild the issues array from the two parallel arrays.
+        for (uint i = 0; i < issueNumbers.length; i++) {
+            repo.issueRatings.push(
+                Issue(issueNumbers[i], difficultyRatings[i])
+            );
         }
 
         repo.ratingSum = totalRating;
@@ -165,8 +180,7 @@ contract GitGrant {
         require(userWallet != address(0), "User wallet not registered");
 
         // Transfer the payout amount.
-        (bool success, ) = userWallet.call{value: amount}("");
-        require(success, "Transfer failed");
+        userWallet.transfer(amount);
     }
 
     // Optionally, a receive function to accept plain ETH transfers.

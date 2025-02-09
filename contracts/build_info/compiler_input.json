@@ -1,0 +1,39 @@
+{
+    "language": "Solidity",
+    "sources": {
+        "GitGrant.sol": {
+            
+        }
+    },
+    "settable":{
+            "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract GitGrant {\n    // The wallet address that controls the state of the contract.\n    address public owner;\n\n    // Mapping from GitHub username to the user's wallet address.\n    mapping(string => address) public userWallets;\n\n    // Mapping from repository name to its RepoState.\n    mapping(string => RepoState) public repoStates;\n\n    // Struct representing an issue.\n    struct Issue {\n        uint issueNumber;\n        uint difficultyRating;\n    }\n\n    // Struct representing the state for a GitHub repo.\n    struct RepoState {\n        string githubOwnerName;\n        string githubOwnerRepo;\n        uint remainingBudget; // in wei\n        Issue[] issueRatings;\n        uint ratingSum;\n    }\n\n    // Modifier to restrict functions to only the contract owner.\n    modifier onlyOwner() {\n        require(msg.sender == owner, \"Only owner allowed\");\n        _;\n    }\n\n    // Set the deployer as the owner.\n    constructor() {\n        owner = msg.sender;\n    }\n\n    /// @notice Register a GitHub user by mapping their GitHub username to their wallet address.\n    /// @param username The GitHub username.\n    /// @param wallet The wallet address for that user.\n    function registerUser(string memory username, address wallet) external onlyOwner {\n        require(wallet != address(0), \"Invalid wallet address\");\n        userWallets[username] = wallet;\n    }\n\n    /// @notice Register a new repository.\n    /// @param repoName The unique identifier for the repo (used as a key).\n    /// @param githubOwnerName The GitHub username of the repo owner.\n    /// @param githubRepoName The repository name on GitHub.\n    function registerRepo(\n        string memory repoName,\n        string memory githubOwnerName,\n        string memory githubRepoName\n    ) external onlyOwner {\n        // Ensure that this repo has not been registered already.\n        require(bytes(repoStates[repoName].githubOwnerName).length == 0, \"Repo already registered\");\n\n        // Initialize the RepoState.\n        RepoState storage repo = repoStates[repoName];\n        repo.githubOwnerName = githubOwnerName;\n        repo.githubOwnerRepo = githubRepoName;\n        repo.remainingBudget = 0;\n        repo.ratingSum = 0;\n    }\n\n    /// @notice Deposit funds to a repository’s budget.\n    /// @dev The function is payable so funds (in wei) can be sent.\n    /// @param repoName The repository name to which funds should be added.\n    function depositFunds(string memory repoName) external payable {\n        require(msg.value > 0, \"Must send some ether\");\n        require(bytes(repoStates[repoName].githubOwnerName).length > 0, \"Repo not registered\");\n\n        // Add the sent funds to the repo's remaining budget.\n        repoStates[repoName].remainingBudget += msg.value;\n    }\n\n    /// @notice Add an issue to the repository’s list of issues and update its rating sum.\n    /// @param repoName The repository to update.\n    /// @param newRatings updated issues and ratings.\n    /// @param totalRating total difficulty ratings for all the issues.\n    function updateIssues(\n        string memory repoName,\n        Issue[] memory newRatings,\n        uint totalRating\n    ) external onlyOwner {\n        require(bytes(repoStates[repoName].githubOwnerName).length > 0, \"Repo not registered\");\n\n        // Add the new issue.\n        RepoState storage repo = repoStates[repoName];\n        \n        // Clear the existing issues array.\n        delete repo.issueRatings;\n        \n        // Copy each Issue from the memory array to the storage array.\n        for (uint i = 0; i < newRatings.length; i++) {\n            repo.issueRatings.push(newRatings[i]);\n        }\n\n        repo.ratingSum=totalRating;\n    }\n\n    /// @notice Resolve an issue: remove it from the issues list, update the rating sum,\n    ///         subtract the payout amount from the remaining budget, and transfer the payout\n    ///         to the GitHub user’s wallet.\n    /// @param repoName The repository where the issue exists.\n    /// @param issueNumber The issue number to resolve.\n    /// @param githubUsername The GitHub username of the contributor receiving funds.\n    /// @param amount The amount (in wei) to pay out.\n    function resolveIssue(\n        string memory repoName,\n        uint issueNumber,\n        string memory githubUsername,\n        uint amount\n    ) external onlyOwner {\n        RepoState storage repo = repoStates[repoName];\n        require(bytes(repo.githubOwnerName).length > 0, \"Repo not registered\");\n\n        // Find the issue by its issueNumber.\n        bool found = false;\n        uint index;\n        uint issueRating;\n        for (uint i = 0; i < repo.issueRatings.length; i++) {\n            if (repo.issueRatings[i].issueNumber == issueNumber) {\n                found = true;\n                index = i;\n                issueRating = repo.issueRatings[i].difficultyRating;\n                break;\n            }\n        }\n        require(found, \"Issue not found\");\n\n        // Remove the issue from the issues array by swapping with the last element and then popping.\n        repo.issueRatings[index] = repo.issueRatings[repo.issueRatings.length - 1];\n        repo.issueRatings.pop();\n\n        // Subtract the issue's difficulty rating from the rating sum.\n        require(repo.ratingSum >= issueRating, \"Rating sum underflow\");\n        repo.ratingSum -= issueRating;\n\n        // Ensure there are enough funds in the repo's remaining budget.\n        require(repo.remainingBudget >= amount, \"Insufficient remaining budget\");\n        repo.remainingBudget -= amount;\n\n        // Lookup the wallet address for the given GitHub username.\n        address payable userWallet = payable(userWallets[githubUsername]);\n        require(userWallet != address(0), \"User wallet not registered\");\n\n        // Transfer the payout amount.\n        (bool success, ) = userWallet.call{value: amount}(\"\");\n        require(success, \"Transfer failed\");\n    }\n\n    // Optionally, a receive function to accept plain ETH transfers.\n    // receive() external payable {}\n}\n"
+    },
+    "settings": {
+        "optimizer": {
+            "enabled": false,
+            "runs": 200
+        },
+        "outputSelection": {
+            "*": {
+                "": [
+                    "ast"
+                ],
+                "*": [
+                    "abi",
+                    "metadata",
+                    "devdoc",
+                    "userdoc",
+                    "storageLayout",
+                    "evm.legacyAssembly",
+                    "evm.bytecode",
+                    "evm.deployedBytecode",
+                    "evm.methodIdentifiers",
+                    "evm.gasEstimates",
+                    "evm.assembly"
+                ]
+            }
+        },
+        "remappings": [],
+        "evmVersion": "cancun"
+    }
+}
