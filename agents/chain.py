@@ -8,9 +8,13 @@ from github.agent import initialize_github_agent
 from rate_issue.agent import initialize_rating_agent
 from agent import initialize_meta_agent
 from github.contribution import get_contribution
-
+from interactions.deploy import register_user, register_repo, update_issues, resolve_issue
+from interactions.read import get_repo_state, check_repo_registration
+from utils import split_dicts
 class State(TypedDict):
     # User input
+    username: str
+    address: str
     owner: str
     repo: str
     remaining_budget: int
@@ -36,7 +40,6 @@ config = {"configurable": {"thread_id": "1"}}
 
 github_agent,_ = initialize_github_agent(memory, config)
 def evaluate_issue(state: State):
-    print("evaluating:",state['current_issue'])
     action_items = github_agent.invoke(
         {"messages": [f"Owner:{state['owner']}, Repo:{state['repo']}, Issue:{state['current_issue']}"]},
     )
@@ -44,7 +47,6 @@ def evaluate_issue(state: State):
 
 rating_agent,_ = initialize_rating_agent(memory, config)
 def assign_rating(state: State):
-    print("rating:",state['current_issue'])
     rating = rating_agent.invoke(
         {"messages": [f"{state['action_items']}"]},
     )
@@ -60,7 +62,16 @@ def assign_rating(state: State):
 
 meta_agent,_ = initialize_meta_agent(memory, config)
 def meta_agent_routing(state: State):
-    if state["action"] == "fetch":
+    if state["action"] == "register user":
+        register_user(state["username"],state["address"])
+        return {"action":""}
+    elif state["action"] == "register repo":
+        if check_repo_registration(state["owner"]+"/"+state["repo"]):
+            return {"action":"","message":"Repo already registered"}
+        
+        register_repo(state["owner"],state["repo"])
+        return {"action":""}
+    elif state["action"] == "fetch":
         response =  meta_agent.invoke(
             {"messages": [f"Owner:{state['owner']}, Repo:{state['repo']}"]},
         )
@@ -77,9 +88,13 @@ def meta_agent_routing(state: State):
                     return {"issues": issues, "current_issue": current_issue, "action": "evaluate"}
         else: 
             print("Invalid action")
+        
+        # update repo state in smart contract
+        issueNumbers,ratings=split_dicts(issues)
+        update_issues(state["owner"]+"/"+state["repo"],issueNumbers,ratings,state["rating_sum"])
         return {"issues":issues, "action":""}
         
-    elif state["action"] == "send":
+    elif state["action"] == "resolve":
         contribution = get_contribution(owner=state["owner"], repo=state["repo"], pr=state["current_issue"])
         if contribution["linked issue"]==0:
             return {"message": f"PR {state['current_issue']} is not linked to any issue.", "action":"", "current_issue":0}
@@ -88,23 +103,17 @@ def meta_agent_routing(state: State):
         elif contribution["issue_state"]=="open":
             return {"message": f"Linked issue {contribution['linked issue']} is still open.", "action":"", "current_issue":0}
         
-        # get contribution["author"] address
-        address="0xD0A6F0F54803E50F27A6CC1741031094267AEE78"
-        response =  meta_agent.invoke(
-            {"messages": [f"Address: {address}, Amount: {(state['remaining_budget']/state['rating_sum'])*state['issues'][contribution['linked issue']]}"]},
-        )
-        json_response=json.loads(response["messages"][-1].content)
-        return {"issues":[], "current_issue":0, "action":"", "message":json_response["RESULT"]}
+        # mark issue resolved and pay contributor through smart contract
+        amount=calculate_reward_amount(state["owner"]+"/"+state["repo"],contribution["linked issue"])
+        resolve_issue(state["owner"]+"/"+state["repo"],str(contribution["linked issue"]),contribution["author"],str(amount))
+     
+        return {"issues":[], "current_issue":0, "action":"", "message":f"Issue #{contribution["linked issue"]} resolved and {amount} paid to {contribution["author"]}."}
     
 def next_step(state: State):
     if state["action"] == "fetch":
         return "meta_agent_routing"
     elif state["action"] == "evaluate":
         return "evaluate_issue"
-    elif state["action"] == "rate":
-        return "rate_issue"
-    elif state["action"] == "send":
-        return "assign_rating"
     elif state["action"] == "":
         return END
 
@@ -124,26 +133,39 @@ def init_chain():
     chain = workflow.compile()
     return chain
 
+def calculate_reward_amount(repoID: str, issueNumber: int):
+    repo_state=get_repo_state(repoID)
+    issues=repo_state["issues"]
+    remaining_budget=repo_state["remaining_budget"]
+    total_rating=repo_state["total_rating"]
+    rating=0
+    for issue in issues:
+        if issue[0] == issueNumber:
+            rating=issue[1]
+            break
+    reward=int((remaining_budget/total_rating)*rating)
+    return reward
+
 if __name__ == '__main__':
     
     chain = init_chain()
     
-    state={"owner": "grafana", "repo": "grafana-app-sdk", "remaining_budget": 0.0001, "action": "fetch"}
-
-    # state = chain.invoke(state,{"recursion_limit": 100})
-    # print("Final state:", state)
-    state={
-        'owner': 'grafana', 
-        'repo': 'grafana-app-sdk', 
-        'remaining_budget': 0.0001, 
-        'action': '', 
-        'current_issue': 0, 
-        'action_items': '', 
-        'issues': {617: 85, 559: 85, 523: 85, 522: 85, 489: 82, 460: 75, 457: 85, 455: 85, 453: 85, 375: 85, 363: 65, 353: 75, 312: 65, 292: 75, 236: 85, 201: 85, 194: 85, 193: 75, 191: 85, 187: 75, 184: 85, 163: 85, 151: 85, 88: 70, 72: 75, 48: 75, 47: 75, 39: 85, 26: 75, 19: 75}, 
-        'rating_sum': 2392
-        }
-    state["action"] = "send"
-    state["issues"][407]=85
-    state["current_issue"] = 409
+    print("Registering user....")
+    state={"username":"0xbala-k", "address":"0xD0A6F0F54803E50F27A6CC1741031094267AEE78", "action":"register user"}
     state = chain.invoke(state)
     print("Final state:", state)
+    
+    print("Registering repo....")
+    state={"owner": "grafana", "repo": "grafana-app-sdk", "action": "register repo"}
+    state = chain.invoke(state)
+    print("Final state:", state)
+    
+    print("Fetching issues....")
+    state={"owner": "grafana", "repo": "grafana-app-sdk", "action": "fetch"}
+    state = chain.invoke(state,{"recursion_limit": 100})
+    print("Final state:", state)
+    
+    # print("Resolving issue....")
+    # state={"owner": "grafana", "repo": "grafana-app-sdk", "current_issue":568, "action": "resolve"}
+    # state = chain.invoke(state)
+    # print("Final state:", state)
