@@ -20,12 +20,12 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-// This is sample data.
 const data = {
   user: {
     name: "Davanapally Itesh",
     email: "itesh@gitgrant.com",
     avatar: "/avatars/shadcn.jpg",
+    id: "user_01"
   },
   teams: [
     {
@@ -46,34 +46,37 @@ const data = {
   ],
   navMain: [
     {
-      title: "Available Grants",
-      url: "#",
+      title: "Maintainer",
+      url: "/dashboard/maintainer",
       icon: SquareTerminal,
-      isActive: true,
       items: [
         {
-          title: "Issues",
-          url: "#",
+          title: "Overview",
+          url: "dashboard/maintainer",
         },
         {
-          title: "Pull Requests",
-          url: "#",
+          title: "Repositories",
+          url: "dashboard/maintainer/repositories",
+        },
+        {
+          title: "Grants",
+          url: "dashboard/maintainer/grants",
         },
       ],
     },
     {
-      title: "Payouts",
-      url: "#",
+      title: "Contributor",
+      url: "/dashboard/contributor",
       icon: Settings2,
       items: [
         {
-          title: "Contributions",
-          url: "#",
+          title: "Overview",
+          url: "dashboard/contributor",
         },
         {
-          title: "Payout Dashboard",
-          url: "#",
-        },
+          title: "Earnings",
+          url: "dashboard/contributor/earnings",
+        }
       ],
     },
   ],

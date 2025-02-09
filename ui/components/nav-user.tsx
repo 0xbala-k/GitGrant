@@ -6,9 +6,8 @@ import {
   ChevronsUpDown,
   CreditCard,
   LogOut,
-  Sparkles,
 } from "lucide-react"
-
+import { ConnectWalletDialog } from "./ConnectWalletDialog"
 import {
   Avatar,
   AvatarFallback,
@@ -29,6 +28,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 
 export function NavUser({
   user,
@@ -37,11 +39,40 @@ export function NavUser({
     name: string
     email: string
     avatar: string
+    id: string
   }
 }) {
+  const router = useRouter()
   const { isMobile } = useSidebar()
+  const [isWalletDialogOpen, setIsWalletDialogOpen] = useState(false)
+  const { toast } = useToast()
+
+  const handleLogout = async () => {
+    try {
+      // TODO - replace this with actual API call when backend is ready
+      // const response = await fetch('/api/auth/logout', {
+      //   method: 'POST',
+      //   credentials: 'include',
+      // })
+      
+      localStorage.removeItem('github_oauth_state')
+      localStorage.removeItem('github_auth_state')
+      toast({
+        title: "User logged out Successfully",
+        variant: "default",
+      })
+      router.push('/')
+    } catch (error) {
+      console.error('Logout failed:', error)
+      toast({
+        title: "Failed to logout. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
+    <>
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
@@ -85,7 +116,9 @@ export function NavUser({
                 <BadgeCheck />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => {
+                setIsWalletDialogOpen(true)
+              }}>
                 <CreditCard />
                 Connect to Web3 wallet
               </DropdownMenuItem>
@@ -95,13 +128,19 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <LogOut />
+            <DropdownMenuItem onSelect={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
+    <ConnectWalletDialog 
+      open={isWalletDialogOpen} 
+      onOpenChange={setIsWalletDialogOpen}
+      userId={user.id}
+    />
+  </>
   )
 }
